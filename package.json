@@ -1,0 +1,26 @@
+{
+  "name": "goodly-harness",
+  "version": "0.1.0",
+  "description": "Goodly service testing harness",
+  "main": "dist/harness.js",
+  "scripts": {
+    "build": "babel src --source-maps --out-dir dist ",
+    "prepublish": "npm run build"
+  },
+  "author": "Brian <bmancini@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "debug": "^2.2.0",
+    "source-map-support": "^0.4.0"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.11.4",
+    "babel-eslint": "^6.1.2",
+    "babel-preset-es2015": "^6.9.0",
+    "babel-preset-stage-0": "^6.5.0",
+    "chai": "^3.5.0",
+    "eslint": "^2.13.1",
+    "mocha": "^2.5.3",
+    "sinon": "^1.17.4"
+  }
+}
