@@ -52,6 +52,10 @@ class Harness {
       let args = arguments;
       return this.then(() => me.emit.apply(me, args));
     };
+    Promise.prototype.request = function() {
+      let args = arguments;
+      return this.then(() => me.request.apply(me, args));
+    };
     Promise.prototype.expect = function() {
       let args = arguments;
       return this.then(() => me.expect.apply(me, args));
@@ -81,25 +85,33 @@ class Harness {
     return this;
   }
 
-  async expect() {
-
-    // convert arguments into array
-    // todo move to utility
-    let args = arguments;
-    let argTypes = Array.prototype.map.call(args, (arg) => Array.isArray(arg) ? 'array' : typeof(arg));
-
-    if(argTypes[0] === 'string' &&
-       argTypes[1] === 'object') {
-      this._assertEmitted(args[0], args[1]);
-    }
-
-    // if (argTypes[argTypes.length - 1] === 'function')
-    //   argTypes[argTypes.length - 1]();
-
-    return this;
+  async request(event, data) {
+    debug('request %s', event);
+    await this.queueHandlers[this.service.name]({
+      properties: {
+        correlationId: 'fake-correlationId',
+        headers: {
+          contentType: 'buffer' // this simply returns the data as-is
+        },
+        replyTo: 'replyToQueue'
+      },
+      fields: {
+        routingKey: event
+      },
+      content: data
+    });
   }
 
-  _assertEmitted(event, data) {
+  async expect() {
+    if(arguments.length === 2) {
+      this._expectEmit(arguments[0], arguments[1]);
+    }
+    else if (arguments.length === 1) {
+      this._expectReply(arguments[0]);
+    }
+  }
+
+  _expectEmit(event, data) {
     debug('expect emit of %s', event);
 
     let args = this.stubChannel.publish.args.splice(0, 1)[0];
@@ -116,6 +128,22 @@ class Harness {
     expect(emittedData).to.deep.equal(data);
   }
 
+  _expectReply(data) {
+    debug('expect reply');
+
+    // call looks like:
+    //  channel.sendToQueue(sendToQueue, buffer, { correlationId, headers, noAck: true });
+    let args = this.stubChannel.sendToQueue.args.splice(0, 1)[0];
+
+    if (!args)
+      throw new Error('Reply was not send');
+
+    let { contentType } = convertToBuffer(data);
+
+    let emittedData = convertFromBuffer(contentType, args[1]);
+    expect(emittedData).to.deep.equal(data);
+  }
+
   async end(callback, done) {
     try {
       debug('ending');
@@ -128,6 +156,7 @@ class Harness {
     finally {
       // undo stub
       Promise.prototype.emit = undefined;
+      Promise.prototype.request = undefined;
       Promise.prototype.expect = undefined;
       Promise.prototype.end = undefined;
     }
