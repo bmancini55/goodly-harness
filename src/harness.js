@@ -1,7 +1,9 @@
 
-const sinon = require('sinon');
-const chai  = require('chai');
-const debug = require('debug')('goodly-harness');
+const { convertToBuffer, convertFromBuffer } = require('goodly/dist/util');
+const sinon  = require('sinon');
+const chai   = require('chai');
+const debug  = require('debug')('goodly-harness');
+const expect = chai.expect;
 
 class Harness {
 
@@ -57,7 +59,8 @@ class Harness {
     Promise.prototype.end = function() {
       let args = arguments;
       return this
-        .then(() => me.end.apply(me, args));
+        .then(() => me.end.apply(me, args))
+        .catch((err) => args[args.length - 1](err));
     };
   }
 
@@ -67,7 +70,7 @@ class Harness {
       properties: {
         correlationId: 'fake-correlationId',
         headers: {
-          contentType: 'raw'
+          contentType: 'buffer' // this simply returns the data as-is
         }
       },
       fields: {
@@ -79,18 +82,38 @@ class Harness {
   }
 
   async expect() {
-    debug('expect');
 
     // convert arguments into array
     // todo move to utility
-    let argTypes = Array.prototype.map.call(arguments, arguments, (arg) => Array.isArray(arg) ? 'array' : typeof(arg));
+    let args = arguments;
+    let argTypes = Array.prototype.map.call(args, (arg) => Array.isArray(arg) ? 'array' : typeof(arg));
 
-    if(argTypes.length === 2 && argTypes[0] === 'string' && argTypes[1] === 'object')
+    if(argTypes[0] === 'string' &&
+       argTypes[1] === 'object') {
+      this._assertEmitted(args[0], args[1]);
+    }
+
+    // if (argTypes[argTypes.length - 1] === 'function')
+    //   argTypes[argTypes.length - 1]();
+
     return this;
   }
 
-  async _expectEmit(event, data) {
-    //this.stubChannel.consume.withArgs
+  _assertEmitted(event, data) {
+    debug('expect emit of %s', event);
+
+    let args = this.stubChannel.publish.args.splice(0, 1)[0];
+
+    if(!args)
+      throw new Error('Event ' + event + ' was not emitted');
+
+    let { contentType } = convertToBuffer(data);
+
+    let emittedEvent = args[1];
+    let emittedData = convertFromBuffer(contentType, args[2]);
+
+    expect(emittedEvent).to.equal(event);
+    expect(emittedData).to.deep.equal(data);
   }
 
   async end(callback, done) {
