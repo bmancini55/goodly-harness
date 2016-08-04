@@ -1,5 +1,5 @@
 # goodly-harness
-This is an integration testing harness similar.
+This is an integration testing harness for Goodly services. The harness can be used for testing your service to ensure that it mocked events are properly handled by your service and that the outputs from your service match the expected outputs.
 
 ##Getting Started
 
