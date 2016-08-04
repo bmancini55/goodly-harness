@@ -15,7 +15,7 @@ Include the harness in your spec files:
 import harness from 'goodly-harness';
 ```
 
-Then you use the harness to bootstrap a service.
+Then you use the harness to bootstrap a service. You can fake emitting an event and then assert that your service handled that event in an appropriate manner.
 
 ```javascript
 describe('on foo.updated', () => {
